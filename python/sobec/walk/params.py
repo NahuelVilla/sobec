@@ -125,7 +125,7 @@ class WalkParams:
         for side in ["left", "right"]
         for idx in [1, 2, 4]
     ]
-    vcomRef = np.array([0.05, 0, 0])
+    vcomRef = np.array([0.0, 0, 0])
 
     footSize = 0.05
     withNormalForceBoundOnly = False

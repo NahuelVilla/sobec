@@ -1,19 +1,19 @@
 import pinocchio as pin
 import crocoddyl as croc
 import numpy as np
-from numpy.linalg import norm, pinv, inv, svd, eig  # noqa: F401
+from numpy.linalg import norm#, pinv, inv, svd, eig  # noqa: F401
 import time
 import numpy.random
 
 # Local imports
 import sobec
-from utils.save_traj import save_traj
+from utils_mpc.save_traj import save_traj
 from sobec.walk.robot_wrapper import RobotWrapper
 from sobec.walk import ocp
 from mpcparams import WalkParams
 from sobec.walk.config_mpc import configureMPCWalk
-from utils.pinbullet import SimuProxy
-from utils import viewer_multiple
+from utils_mpc.pinbullet import SimuProxy, showForce
+from utils_mpc import viewer_multiple
 from sobec.walk import miscdisp
 
 # from sobec.walk.talos_collections import jointToLockCollection
@@ -162,8 +162,10 @@ def play():
 
 croc.enable_profiler()
 
+pushing_force = np.array([0, 0, 0])
+
 # FOR LOOP
-for s in range(15):  # int(20.0 / walkParams.DT)):
+for s in range(int(10.0 / walkParams.DT)): #15):  # 
 
     # ###############################################################################
     # # For timesteps without MPC updates
@@ -177,12 +179,19 @@ for s in range(15):  # int(20.0 / walkParams.DT)):
         )
 
         # generate random numbers close to 1 that multiply the desired torques
-        noise = np.ones_like(torques) + walkParams.torque_noise * (
-            2 * np.random.rand(torques.shape[0]) - 1.0
-        )
+        noise = 1
+#        np.ones_like(torques) + walkParams.torque_noise * (
+#                2 * np.random.rand(torques.shape[0]) - 1.0
+#                )
         real_torques = noise * torques
 
         # Run one step of simu
+        if s > 100 and s <= 150:
+            pushing_force = np.array([-20, 0, 0])
+        else:
+            pushing_force = np.zeros(3)
+        
+        simu.push_waist(pushing_force)
         simu.step(real_torques)
 
         hx.append(simu.getState())
@@ -198,18 +207,20 @@ for s in range(15):  # int(20.0 / walkParams.DT)):
     hxs.append(np.array(mpc.solver.xs))
 
     # f"{mpc.basisRef[0]:.03} "
-    print(
-        "{:4d} {} {:4d} reg={:.3} a={:.3} solveTime={:.3}".format(
-            s,
-            miscdisp.dispocp(mpc.problem, robot.contactIds),
-            mpc.solver.iter,
-            mpc.solver.x_reg,
-            mpc.solver.stepLength,
-            solve_time,
-        )
-    )
-    if not s % 10:
-        viz.display(simu.getState()[: robot.model.nq])
+#    print(
+#        "{:4d} {} {:4d} reg={:.3} a={:.3} solveTime={:.3}".format(
+#            s,
+#            miscdisp.dispocp(mpc.problem, robot.contactIds),
+#            mpc.solver.iter,
+#            mpc.solver.x_reg,
+#            mpc.solver.stepLength,
+#            solve_time,
+#        )
+#    )
+#    if not s % 10:
+    
+    showForce("world/force", pushing_force, simu.get_waist_frame(), gv)
+    viz.display(simu.getState()[: robot.model.nq])
 
     # Before each takeoff, the robot display the previewed movement (3 times)
     if (
@@ -241,7 +252,7 @@ if walkParams.saveFile is not None:
 
 # The 2 next import must not be included **AFTER** pyBullet starts.
 import matplotlib.pylab as plt  # noqa: E402,F401
-import utils.walk_plotter as walk_plotter  # noqa: E402
+import utils_mpc.walk_plotter as walk_plotter  # noqa: E402
 
 plotter = walk_plotter.WalkPlotter(robot.model, robot.contactIds)
 plotter.setData(contactPattern, np.array(hx), None, None)

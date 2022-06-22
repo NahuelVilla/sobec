@@ -171,6 +171,15 @@ class SimuProxy:
             forces=[0.0 for _ in self.bulletCtrlJointsInPinOrder],
         )
         self.readyForSimu = True
+        
+    def push_waist(self, force):
+        pyb.applyExternalForce(self.robotId, -1, force, np.zeros(3), pyb.LINK_FRAME)
+        
+    def get_waist_frame(self):
+        frame = pyb.getBasePositionAndOrientation(self.robotId)
+        
+        quat = pin.Quaternion(np.array(frame[1]))
+        return pin.SE3(quat, np.array(frame[0]))
 
     ################################################################################
     ################################################################################
@@ -203,7 +212,48 @@ class SimuProxy:
         x[:3] -= self.localInertiaPos
 
         return x
+    
+def showForce(arrow_name, vector, se3Pose, gui):
+    if vector is not None:
+        force = vector
+    else:
+        if gui.nodeExists(arrow_name):
+            gui.deleteNode(arrow_name, True)
+        return
+    if np.any(force != 0):
+        f = se3Pose.rotation @ force[:3]
+        if f[1] >= 0:
+            theta = np.arccos((f[:2] @ [1, 0]) / np.linalg.norm(f[:2]))
+        else:
+            theta = -np.arccos((f[:2] @ [1, 0]) / np.linalg.norm(f[:2]))
 
+        phi = np.arcsin(f[2] / np.linalg.norm(f))
+        Rz = pin.utils.rotate("z", theta)
+        Rzy = Rz @ pin.utils.rotate("y", phi)
+
+        normf = np.linalg.norm(f)
+        ratio = normf / 200 if normf < 400 else normf / 1700
+        lenght = normf / 25 if normf / 25 < 1.3 else 1.3
+
+        o = se3Pose.translation - (0.21 + lenght) * f / normf
+        M = pin.SE3()
+        M.translation = o
+        M.rotation = Rzy
+
+        q = pin.SE3ToXYZQUATtuple(M)
+        color = [normf / 600, 1 - normf / 600, 0, 0.7]
+
+        if not gui.nodeExists(arrow_name):
+            gui.addArrow(arrow_name, ratio, lenght, color)
+
+        gui.applyConfiguration(arrow_name, q)
+        gui.setFloatProperty(arrow_name, "Size", lenght)
+        gui.setFloatProperty(arrow_name, "Radius", ratio)
+        gui.setColor(arrow_name, color)
+        gui.refresh()
+    else:
+        if gui.nodeExists(arrow_name):
+            gui.deleteNode(arrow_name, True)
 
 # ##############################################################################
 # ##############################################################################
