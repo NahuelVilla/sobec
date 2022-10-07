@@ -9,7 +9,8 @@ import pybullet_data
 import pybullet as p  # PyBullet simulator
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-import os 
+import os
+
 
 class BulletTalos:
     def __init__(self, conf, rmodelComplete):
@@ -70,32 +71,44 @@ class BulletTalos:
 
     def initializeJoints(self, q0CompleteStart):
         # Initialize position in pyBullet
-        p.resetBasePositionAndOrientation(self.robotId, posObj=[q0CompleteStart[0] + self.localInertiaPos[0],
-            q0CompleteStart[1] + self.localInertiaPos[1], 
-            q0CompleteStart[2] + self.localInertiaPos[2]], 
-            ornObj=q0CompleteStart[3:7])
+        p.resetBasePositionAndOrientation(
+            self.robotId,
+            posObj=[
+                q0CompleteStart[0] + self.localInertiaPos[0],
+                q0CompleteStart[1] + self.localInertiaPos[1],
+                q0CompleteStart[2] + self.localInertiaPos[2],
+            ],
+            ornObj=q0CompleteStart[3:7],
+        )
         initial_joint_positions = np.array(q0CompleteStart[7:].flat).tolist()
         for i in range(len(initial_joint_positions)):
             p.enableJointForceTorqueSensor(self.robotId, i, True)
             p.resetJointState(
                 self.robotId, self.JointIndicesComplete[i], initial_joint_positions[i]
             )
-    
+
     def resetState(self, q0Start):
         # Initialize position in pyBullet
-        p.resetBasePositionAndOrientation(self.robotId, posObj=[q0Start[0] + self.localInertiaPos[0],
-            q0Start[1] + self.localInertiaPos[1], 
-            q0Start[2] + self.localInertiaPos[2]], 
-            ornObj=q0Start[3:7])
+        p.resetBasePositionAndOrientation(
+            self.robotId,
+            posObj=[
+                q0Start[0] + self.localInertiaPos[0],
+                q0Start[1] + self.localInertiaPos[1],
+                q0Start[2] + self.localInertiaPos[2],
+            ],
+            ornObj=q0Start[3:7],
+        )
         for i in range(len(self.bulletControlledJoints)):
             p.resetJointState(
-                self.robotId, self.bulletControlledJoints[i], q0Start[i+7]
+                self.robotId, self.bulletControlledJoints[i], q0Start[i + 7]
             )
-                  
+
     def addStairs(self, path, position):
         p.setAdditionalSearchPath(path)
         self.stepId = p.loadURDF("step/step.urdf")
-        p.resetBasePositionAndOrientation(self.stepId, posObj=position,ornObj=[0,0,0,1])
+        p.resetBasePositionAndOrientation(
+            self.stepId, posObj=position, ornObj=[0, 0, 0, 1]
+        )
 
     def execute(self, torques):
         p.setJointMotorControlArray(
@@ -129,7 +142,7 @@ class BulletTalos:
             ]
         )
         rotation = R.from_quat(q[3:7])
-        q[:3] -= rotation.as_matrix() @ self.localInertiaPos 
+        q[:3] -= rotation.apply(self.localInertiaPos)
         return q, v
 
     def showTargetToTrack(self, LF_pose, RF_pose):
@@ -192,12 +205,46 @@ class BulletTalos:
 
 if __name__ == "__main__":
 
-    import configuration as config
-    from pin_Talos import PinTalos
+    import configuration as conf
+    from sobec_pywrap import RobotDesigner
 
-    design = PinTalos(config)
+    # ### RobotWrapper
+    design_conf = dict(
+        urdfPath=conf.modelPath + conf.URDF_SUBPATH,
+        srdfPath=conf.modelPath + conf.SRDF_SUBPATH,
+        leftFootName=conf.lf_frame_name,
+        rightFootName=conf.rf_frame_name,
+        robotDescription="",
+        controlledJointsNames=[
+            "root_joint",
+            "leg_left_1_joint",
+            "leg_left_2_joint",
+            "leg_left_3_joint",
+            "leg_left_4_joint",
+            "leg_left_5_joint",
+            "leg_left_6_joint",
+            "leg_right_1_joint",
+            "leg_right_2_joint",
+            "leg_right_3_joint",
+            "leg_right_4_joint",
+            "leg_right_5_joint",
+            "leg_right_6_joint",
+            "torso_1_joint",
+            "torso_2_joint",
+            # "arm_left_1_joint",
+            # "arm_left_2_joint",
+            # "arm_left_3_joint",
+            # "arm_left_4_joint",
+            # "arm_right_1_joint",
+            # "arm_right_2_joint",
+            # "arm_right_3_joint",
+            # "arm_right_4_joint",
+        ],
+    )
+    design = RobotDesigner()
+    design.initialize(design_conf)
 
-    o = BulletTalos(config, design.rmodelComplete)
-    o.initializeJoints(design.q0Complete)
+    o = BulletTalos(conf, design.get_rModelComplete())
+    o.initializeJoints(design.get_q0Complete())
 
     o.close()
