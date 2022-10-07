@@ -20,15 +20,18 @@ from sobec_pywrap import (
     WBC,
     HorizonManager,
     ModelMaker,
-    Flex,
     Support,
-)  # , LocomotionType
+    # LocomotionType,
+    Flex,
+)
 import ndcurves
 import numpy as np
 import time
 import os
 
 # from scipy.spatial.transform import Rotation as R
+
+# from flex_joints import Flex
 
 DEFAULT_SAVE_DIR = "/local/src/sobec/python/tests"
 
@@ -63,14 +66,14 @@ def q_mult(q1, q2):
 
 
 def yawRotation(yaw):
-    R = np.array(
+    Ro = np.array(
         [[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]]
     )
-    return R
+    return Ro
 
 
-def extractYaw(R):
-    return np.arctan2(R[1, 0], R[0, 0])
+def extractYaw(Ro):
+    return np.arctan2(Ro[1, 0], Ro[0, 0])
 
 
 def save_trajectory(
@@ -132,7 +135,7 @@ def defineBezier(height, time_init, time_final, placement_init, placement_final)
 
 def foot_trajectory(T, time_to_land, initial_pose, final_pose, trajectory_swing):
     """Functions to generate steps."""
-    tmax = conf.TsingleSupport
+    # tmax = conf.TsingleSupport
     landing_advance = 0
     takeoff_delay = 0
     placement = []
@@ -277,14 +280,12 @@ flex.initialize(
         filtered=True,
     )
 )
-
 qStartComplete = design.get_q0Complete().copy()
 qStartComplete[3:7] = q_mult(qYaw, qStartComplete[3:7])
 mpc = WBC()
 mpc.initialize(
     wbc_conf, design, horizon, qStartComplete, design.get_v0Complete(), "actuationTask"
 )
-
 mpc.generateWalkingCycle(formuler)
 mpc.generateStandingCycle(formuler)
 
@@ -372,7 +373,7 @@ RF_pose = []
 LF_force = []
 RF_force = []
 
-for s in range(T_total * conf.Nc):
+for s in range(5 * T_total * conf.Nc):
     #    time.sleep(0.001)
     if mpc.timeToSolveDDP(s):
         xss.append(mpc.horizon.ddp.xs[0])
@@ -381,12 +382,12 @@ for s in range(T_total * conf.Nc):
         RF_pose.append(mpc.designer.get_RF_frame().copy())
         LF_force.append(
             mpc.horizon.ddp.problem.runningDatas[0]
-            .differential.costs.costs["force_LF"]
+            .differential.costs.costs["wrench_LF"]
             .residual.contact.f.copy()
         )
         RF_force.append(
             mpc.horizon.ddp.problem.runningDatas[0]
-            .differential.costs.costs["force_RF"]
+            .differential.costs.costs["wrench_RF"]
             .residual.contact.f.copy()
         )
 
@@ -466,10 +467,8 @@ for s in range(T_total * conf.Nc):
                 conf.swingApex, 0, 1, starting_position_right, final_position_right
             )
 
-        if mpc.walkingCycle.contacts(0).getContactStatus("leg_left_sole_fix_joint"):
-            if mpc.walkingCycle.contacts(0).getContactStatus(
-                "leg_right_sole_fix_joint"
-            ):
+        if mpc.walkingCycle.contacts(0).getContactStatus(design.get_LF_name()):
+            if mpc.walkingCycle.contacts(0).getContactStatus(design.get_RF_name()):
                 if s // conf.Nc <= conf.TdoubleSupport:
                     ref_force = normal_force_traj_first(
                         float(TdoubleSupport) / float(conf.TdoubleSupport)
@@ -492,11 +491,17 @@ for s in range(T_total * conf.Nc):
                     # Next foot to take off is left foot
                     wrench_reference_2contact_left[2] = fz_ref_1contact - ref_force
                     wrench_reference_2contact_right[2] = ref_force
-                mpc.walkingCycle.setForceReference(
-                    0, "force_LF", wrench_reference_2contact_left
+                mpc.walkingCycle.setWrenchReference(
+                    0,
+                    "wrench_LF",
+                    final_position_left.rotation,
+                    wrench_reference_2contact_left,
                 )
-                mpc.walkingCycle.setForceReference(
-                    0, "force_RF", wrench_reference_2contact_right
+                mpc.walkingCycle.setWrenchReference(
+                    0,
+                    "wrench_RF",
+                    final_position_right.rotation,
+                    wrench_reference_2contact_right,
                 )
             else:
                 TdoubleSupport = 1
@@ -529,7 +534,7 @@ for s in range(T_total * conf.Nc):
     if conf.simulator == "bullet":
         device.execute(torques)
         q_current, v_current = device.measureState()
-        # q_current[3:7] = q_mult(qYaw,q_current[3:7])
+        q_current[3:7] = q_mult(qYaw, q_current[3:7])
         # q_current[3:7] = qStartComplete[3:7]
         device.moveMarkers(mpc.ref_LF_poses[0], mpc.ref_RF_poses[0])
 
@@ -541,20 +546,20 @@ for s in range(T_total * conf.Nc):
 
         ######## Generating the forces ########## TODO: cast it in functions.
 
-        LW = mpc.horizon.pinData(0).f[2].linear
-        RW = mpc.horizon.pinData(0).f[8].linear
-        TW = mpc.horizon.pinData(0).f[1].linear
+        # LW = mpc.horizon.pinData(0).f[2].linear
+        # RW = mpc.horizon.pinData(0).f[8].linear
+        # TW = mpc.horizon.pinData(0).f[1].linear
 
-        if not all(correct_contacts.values()):
-            Lforce = TW - LW if correct_contacts["leg_left_sole_fix_joint"] else -LW
-            Rforce = TW - RW if correct_contacts["leg_right_sole_fix_joint"] else -RW
-        else:
-            Lforce = TW / 2 - LW
-            Rforce = TW / 2 - RW
+        # if not all(correct_contacts.values()):
+        #     Lforce = TW - LW if correct_contacts["leg_left_sole_fix_joint"] else -LW
+        #     Rforce = TW - RW if correct_contacts["leg_right_sole_fix_joint"] else -RW
+        # else:
+        #     Lforce = TW / 2 - LW
+        #     Rforce = TW / 2 - RW
 
         if conf.model_name == "talos_flex":
             qc, dqc = flex.correctEstimatedDeflections(
-                torques, real_state["q"][7:], real_state["dq"][6:], Lforce, Rforce
+                torques, real_state["q"][7:], real_state["dq"][6:]  # , Lforce, Rforce
             )
 
             q_current = np.hstack([real_state["q"][:7], qc])
@@ -568,8 +573,6 @@ for s in range(T_total * conf.Nc):
             # if s == 0:
             # stop
 
-save_trajectory(
-    xss, uss, LF_pose, RF_pose, LF_force, RF_force, save_name="trajectories_xs_us"
-)
+# save_trajectory(xss,uss,LF_pose,RF_pose,LF_force,RF_force, save_name="trajectories_xs_us")
 if conf.simulator == "bullet":
     device.close()
