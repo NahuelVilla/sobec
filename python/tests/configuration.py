@@ -75,7 +75,7 @@ maxNforce = 1500  # This may be still too low
 
 planned_push = [[(0, 10000 * simu_period)], [np.zeros(6)], ["base_link"]]
 
-model_name = "talos_flex"  #
+model_name = "talos"  # _flex
 
 # Flexibility Parameters
 compensate_deflections = True
@@ -131,14 +131,14 @@ wFootPlacement = 10000
 wStateReg = 100
 wControlReg = 0.001
 wLimit = 1e3
-wWrenchCone = 1  # 0.05
-wForceTask = 0
-wCoP = 10
+wWrenchCone = 0.05
+wForceTask = 0.001
+wCoP = 0
 wDCM = 0
 
-weightBasePos = [0, 0, 0, 100, 100, 0]  # [x, y, z| x, y, z]
-weightBaseVel = [10, 10, 10, 10, 10, 10]  # [x, y, z| x, y, z]
-weightLegPos = [1, 10, 10, 0.01, 0.1, 1]  # [z, x, y, y, y, x]
+weightBasePos = [10, 0, 500, 1000, 1000, 0]  # [x, y, z| x, y, z]
+weightBaseVel = [10, 10, 100, 100, 100, 10]  # [x, y, z| x, y, z]
+weightLegPos = [1, 10, 0.1, 0.01, 0.1, 1]  # [z, x, y, y, y, x]
 weightLegVel = [10, 10, 1, 0.1, 1, 10]  # [z, x, y, y, y, x]
 weightArmPos = [0.01, 100, 1, 0.1]  # [z, x, z, y, z, x, y]
 weightArmVel = [1, 100, 1, 1]  # [z, x, z, y, z, x, y]
@@ -165,7 +165,7 @@ controlWeight = np.array(
     # + weightuArm * 2
 )
 
-forceWeights = np.array([1, 1, 1, 1, 1, 1])
+forceWeights = np.array([0.1, 0.1, 0.01, 1000, 1000, 1000])
 
 lowKinematicLimits = np.array(
     [

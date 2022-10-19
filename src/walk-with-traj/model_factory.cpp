@@ -79,7 +79,7 @@ void ModelMaker::defineFeetWrenchCost(Cost &costCollector,
     refWrench_RF(2) = Fz_ref;
 
   Eigen::VectorXd refCost_LF = wrenchCone_LF.get_A() * refWrench_LF;
-  Eigen::VectorXd refCost_RF = wrenchCone_LF.get_A() * refWrench_RF;
+  Eigen::VectorXd refCost_RF = wrenchCone_RF.get_A() * refWrench_RF;
 
   boost::shared_ptr<ActivationModelQuadRef> activation_LF_Wrench =
       boost::make_shared<ActivationModelQuadRef>(refCost_LF);
