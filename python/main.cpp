@@ -15,20 +15,25 @@ BOOST_PYTHON_MODULE(sobec_pywrap) {
   sobec::python::exposeResidualCenterOfPressure();
   sobec::python::exposeResidualFeetCollision();
   sobec::python::exposeResidualFlyHigh();
+  sobec::python::exposeResidualFlyAngle();
+  sobec::python::exposeResidualDCMPosition();
   sobec::python::exposeResidual2DSurface();
   sobec::python::exposeActivationQuadRef();
   sobec::python::exposeDesigner();
   sobec::python::exposeHorizonManager();
   sobec::python::exposeModelFactory();
-  sobec::python::exposeModelFactoryNoThinking();
+  sobec::python::exposeModelFactoryHand();
   sobec::python::exposeFlex();
   sobec::python::exposeIntegratedActionLPF();
   sobec::python::exposeStateLPF();
   sobec::python::exposeWBC();
+  sobec::python::exposeWBCHorizon();
+  sobec::python::exposeWBCHand();
   sobec::python::exposeOCPWalk();
   sobec::python::exposeMPCWalk();
   sobec::python::exposeFootTrajectory();
 
+  sobec::newcontacts::python::exposeContact6D();
   sobec::newcontacts::python::exposeContact3D();
   sobec::newcontacts::python::exposeContact1D();
   sobec::newcontacts::python::exposeMultipleContacts();

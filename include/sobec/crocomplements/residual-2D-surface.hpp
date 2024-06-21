@@ -54,12 +54,9 @@ class ResidualModel2DSurfaceTpl : public ResidualModelAbstractTpl<_Scalar> {
    * @param[in] slope  Slope value, ie altitude multiplier.
    * @param[in] nu     Dimension of the control vector
    */
-  ResidualModel2DSurfaceTpl(boost::shared_ptr<StateMultibody> state,
-                          const pinocchio::FrameIndex frame_id,
-                          const Vector2s support_translation,
-                          const Scalar separation,
-                          const Scalar orientation,
-                          const std::size_t nu);
+  ResidualModel2DSurfaceTpl(boost::shared_ptr<StateMultibody> state, const pinocchio::FrameIndex frame_id,
+                            const Vector2s support_translation, const Scalar separation, const Scalar orientation,
+                            const Scalar alpha, const std::size_t nu);
 
   /**
    * @brief Initialize the residual model
@@ -71,11 +68,9 @@ class ResidualModel2DSurfaceTpl : public ResidualModelAbstractTpl<_Scalar> {
    * and velocity
    * @param[in] slope  Slope value, ie altitude multiplier.
    */
-  ResidualModel2DSurfaceTpl(boost::shared_ptr<StateMultibody> state,
-                          const pinocchio::FrameIndex frame_id,
-                          const Vector2s support_translation,
-                          const Scalar separation,
-                          const Scalar orientation);
+  ResidualModel2DSurfaceTpl(boost::shared_ptr<StateMultibody> state, const pinocchio::FrameIndex frame_id,
+                            const Vector2s support_translation, const Scalar separation, const Scalar orientation,
+                            const Scalar alpha);
   virtual ~ResidualModel2DSurfaceTpl();
 
   /**
@@ -85,8 +80,7 @@ class ResidualModel2DSurfaceTpl : public ResidualModelAbstractTpl<_Scalar> {
    * @param[in] x     State point \f$\mathbf{x}\in\mathbb{R}^{ndx}\f$
    * @param[in] u     Control input \f$\mathbf{u}\in\mathbb{R}^{nu}\f$
    */
-  virtual void calc(const boost::shared_ptr<ResidualDataAbstract>& data,
-                    const Eigen::Ref<const VectorXs>& x,
+  virtual void calc(const boost::shared_ptr<ResidualDataAbstract>& data, const Eigen::Ref<const VectorXs>& x,
                     const Eigen::Ref<const VectorXs>& u);
 
   /**
@@ -96,11 +90,9 @@ class ResidualModel2DSurfaceTpl : public ResidualModelAbstractTpl<_Scalar> {
    * @param[in] x     State point \f$\mathbf{x}\in\mathbb{R}^{ndx}\f$
    * @param[in] u     Control input \f$\mathbf{u}\in\mathbb{R}^{nu}\f$
    */
-  virtual void calcDiff(const boost::shared_ptr<ResidualDataAbstract>& data,
-                        const Eigen::Ref<const VectorXs>& x,
+  virtual void calcDiff(const boost::shared_ptr<ResidualDataAbstract>& data, const Eigen::Ref<const VectorXs>& x,
                         const Eigen::Ref<const VectorXs>& u);
-  virtual boost::shared_ptr<ResidualDataAbstract> createData(
-      DataCollectorAbstract* const data);
+  virtual boost::shared_ptr<ResidualDataAbstract> createData(DataCollectorAbstract* const data);
 
   /**
    * @brief Return the frame index.
@@ -111,21 +103,19 @@ class ResidualModel2DSurfaceTpl : public ResidualModelAbstractTpl<_Scalar> {
    * @brief Modify the frame index.
    */
   void set_frame_id(const pinocchio::FrameIndex& fid);
-  
+
   /**
    * @brief Modify the matrix A and vector b
    */
-  
-  void set_Ab(
-    const Vector2s support_translation,
-    const Scalar orientation);
- 
-  const MatrixXs& get_A() const {return A_;}
-  const Scalar& get_b() const {return b_;}
-  
-  void set_A(const MatrixXs& A) { A_ = A;}
-  void set_b(const Scalar& b) { b_ = b;}
- 
+
+  void set_Ab(const Vector2s support_translation, const Scalar orientation);
+
+  const MatrixXs& get_A() const { return A_; }
+  const Vector2s& get_b() const { return b_; }
+
+  void set_A(const MatrixXs& A) { A_ = A; }
+  void set_b(const Vector2s& b) { b_ = b; }
+
  protected:
   using Base::nu_;
   using Base::state_;
@@ -135,14 +125,17 @@ class ResidualModel2DSurfaceTpl : public ResidualModelAbstractTpl<_Scalar> {
 
  private:
   pinocchio::FrameIndex frame_id;
-  boost::shared_ptr<typename StateMultibody::PinocchioModel> pin_model_;  //!< Pinocchio model used for internal computations
-  Vector2s support_translation_; // Coordinates of the support foot
-  Scalar separation_; // Separation between flying foot and support foot
-  Scalar orientation_; // Angle of support foot
+  boost::shared_ptr<typename StateMultibody::PinocchioModel>
+      pin_model_;                 //!< Pinocchio model used for internal computations
+  Vector2s support_translation_;  // Coordinates of the support foot
+  Scalar separation_;             // Separation between flying foot and support foot
+  Scalar orientation_;            // Angle of support foot
+  Scalar alpha_;                  // Angle of cone limit
   Vector2s pointA_;
   Vector2s pointB_;
+  Vector2s pointF_;
   MatrixXs A_;
-  Scalar b_;
+  Vector2s b_;
 };
 
 template <typename _Scalar>
@@ -158,13 +151,11 @@ struct ResidualData2DSurfaceTpl : public ResidualDataAbstractTpl<_Scalar> {
   typedef typename MathBase::VectorXs VectorXs;
 
   template <template <typename Scalar> class Model>
-  ResidualData2DSurfaceTpl(Model<Scalar>* const model,
-                         DataCollectorAbstract* const data)
+  ResidualData2DSurfaceTpl(Model<Scalar>* const model, DataCollectorAbstract* const data)
       : Base(model, data), fJf(6, model->get_state()->get_nv()) {
-	fJf.setZero();
+    fJf.setZero();
     //  Check that proper shared data has been passed
-    DataCollectorMultibodyTpl<Scalar>* d =
-        dynamic_cast<DataCollectorMultibodyTpl<Scalar>*>(shared);
+    DataCollectorMultibodyTpl<Scalar>* d = dynamic_cast<DataCollectorMultibodyTpl<Scalar>*>(shared);
     if (d == NULL) {
       throw_pretty(
           "Invalid argument: the shared data should be derived from "

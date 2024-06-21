@@ -8,10 +8,13 @@ set(${PY_NAME}_SOURCES
     crocomplements/residual-center-of-friction.cpp
     crocomplements/residual-feet-collision.cpp
     crocomplements/residual-fly-high.cpp
+    crocomplements/residual-fly-angle.cpp
+    crocomplements/residual-dcm-position.cpp
     crocomplements/residual-2D-surface.cpp
     crocomplements/activation-quad-ref.cpp
     crocomplements/lowpassfilter/action.cpp
     crocomplements/lowpassfilter/state.cpp
+    crocomplements/contact/contact6d.cpp
     crocomplements/contact/contact3d.cpp
     crocomplements/contact/contact1d.cpp
     crocomplements/contact/multiple-contacts.cpp
@@ -21,10 +24,12 @@ set(${PY_NAME}_SOURCES
     walk-with-traj/horizon_manager.cpp
     walk-with-traj/model_factory.cpp
     walk-with-traj/wbc.cpp
+    walk-with-traj/wbc_horizon.cpp
     walk-with-traj/foot_trajectory.cpp
+    hand_table/wbc_hand.cpp
+    hand_table/model_factory_hand.cpp
     walk-without-think/ocp.cpp
-    walk-without-think/mpc.cpp
-    walk-without-think/model_factory_nothinking.cpp)
+    walk-without-think/mpc.cpp)
 
 add_library(${PY_NAME}_pywrap SHARED ${${PY_NAME}_SOURCES})
 target_link_libraries(${PY_NAME}_pywrap PUBLIC ${PROJECT_NAME} eigenpy::eigenpy)

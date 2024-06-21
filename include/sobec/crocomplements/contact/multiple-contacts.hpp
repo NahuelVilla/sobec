@@ -20,6 +20,7 @@
 
 #include "sobec/crocomplements/contact/contact1d.hpp"
 #include "sobec/crocomplements/contact/contact3d.hpp"
+#include "sobec/crocomplements/contact/contact6d.hpp"
 #include "sobec/fwd.hpp"
 
 namespace sobec {
@@ -34,8 +35,7 @@ namespace newcontacts {
  * routines that update the only active contacts.
  */
 template <typename _Scalar>
-class ContactModelMultipleTpl
-    : public crocoddyl::ContactModelMultipleTpl<_Scalar> {
+class ContactModelMultipleTpl : public crocoddyl::ContactModelMultipleTpl<_Scalar> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -55,12 +55,9 @@ class ContactModelMultipleTpl
   typedef typename MathBase::MatrixXs MatrixXs;
   typedef typename MathBase::Matrix3s Matrix3s;
 
-  typedef std::map<std::string, boost::shared_ptr<ContactItem> >
-      ContactModelContainer;
-  typedef std::map<std::string, boost::shared_ptr<ContactDataAbstract> >
-      ContactDataContainer;
-  typedef typename pinocchio::container::aligned_vector<
-      pinocchio::ForceTpl<Scalar> >::iterator ForceIterator;
+  typedef std::map<std::string, boost::shared_ptr<ContactItem> > ContactModelContainer;
+  typedef std::map<std::string, boost::shared_ptr<ContactDataAbstract> > ContactDataContainer;
+  typedef typename pinocchio::container::aligned_vector<pinocchio::ForceTpl<Scalar> >::iterator ForceIterator;
 
   /**
    * @brief Initialize the multi-contact model
@@ -68,8 +65,7 @@ class ContactModelMultipleTpl
    * @param[in] state  Multibody state
    * @param[in] nu     Dimension of control vector
    */
-  ContactModelMultipleTpl(boost::shared_ptr<StateMultibody> state,
-                          const std::size_t nu);
+  ContactModelMultipleTpl(boost::shared_ptr<StateMultibody> state, const std::size_t nu);
 
   /**
    * @brief Initialize the multi-contact model
@@ -90,8 +86,7 @@ class ContactModelMultipleTpl
    * coordinate
    * \f$\frac{\partial{}^o\underline{\boldsymbol{\lambda}}_c}{\partial\mathbf{u}}\in\mathbb{R}^{nc\times{nu}}\f$
    */
-  void updateForceDiff(const boost::shared_ptr<ContactDataMultiple>& data,
-                       const boost::shared_ptr<MatrixXs> df_dx,
+  void updateForceDiff(const boost::shared_ptr<ContactDataMultiple>& data, const boost::shared_ptr<MatrixXs> df_dx,
                        const boost::shared_ptr<MatrixXs> df_du) const;
 
   /**

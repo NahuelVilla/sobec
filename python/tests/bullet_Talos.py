@@ -9,6 +9,9 @@ import pybullet_data
 import pybullet as p  # PyBullet simulator
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+import configurationWalk as conf
+# import os
+
 
 class BulletTalos:
     def __init__(self, conf, rmodelComplete):
@@ -69,27 +72,44 @@ class BulletTalos:
 
     def initializeJoints(self, q0CompleteStart):
         # Initialize position in pyBullet
-        p.resetBasePositionAndOrientation(self.robotId, posObj=[q0CompleteStart[0] + self.localInertiaPos[0],
-            q0CompleteStart[1] + self.localInertiaPos[1], 
-            q0CompleteStart[2] + self.localInertiaPos[2]], 
-            ornObj=q0CompleteStart[3:7])
+        p.resetBasePositionAndOrientation(
+            self.robotId,
+            posObj=[
+                q0CompleteStart[0] + self.localInertiaPos[0],
+                q0CompleteStart[1] + self.localInertiaPos[1],
+                q0CompleteStart[2] + self.localInertiaPos[2],
+            ],
+            ornObj=q0CompleteStart[3:7],
+        )
         initial_joint_positions = np.array(q0CompleteStart[7:].flat).tolist()
         for i in range(len(initial_joint_positions)):
             p.enableJointForceTorqueSensor(self.robotId, i, True)
             p.resetJointState(
                 self.robotId, self.JointIndicesComplete[i], initial_joint_positions[i]
             )
-    
+
     def resetState(self, q0Start):
         # Initialize position in pyBullet
-        p.resetBasePositionAndOrientation(self.robotId, posObj=[q0Start[0] + self.localInertiaPos[0],
-            q0Start[1] + self.localInertiaPos[1], 
-            q0Start[2] + self.localInertiaPos[2]], 
-            ornObj=q0Start[3:7])
+        p.resetBasePositionAndOrientation(
+            self.robotId,
+            posObj=[
+                q0Start[0] + self.localInertiaPos[0],
+                q0Start[1] + self.localInertiaPos[1],
+                q0Start[2] + self.localInertiaPos[2],
+            ],
+            ornObj=q0Start[3:7],
+        )
         for i in range(len(self.bulletControlledJoints)):
             p.resetJointState(
-                self.robotId, self.bulletControlledJoints[i], q0Start[i+7]
+                self.robotId, self.bulletControlledJoints[i], q0Start[i + 7]
             )
+
+    def addStairs(self, path, position, orientation):
+        p.setAdditionalSearchPath(path)
+        self.stepId = p.loadURDF("step/step.urdf")
+        p.resetBasePositionAndOrientation(
+            self.stepId, posObj=position, ornObj=orientation
+        )
 
     def execute(self, torques):
         p.setJointMotorControlArray(
@@ -99,6 +119,12 @@ class BulletTalos:
             forces=torques,
         )
         p.stepSimulation()
+        
+    def changeCamera(self,cameraDistance,cameraYaw,cameraPitch,cameraTargetPos):
+        p.resetDebugVisualizerCamera(cameraDistance,
+                                     cameraYaw,
+                                     cameraPitch,
+                                     cameraTargetPos)
 
     def measureState(self):
         jointStates = p.getJointStates(
@@ -123,8 +149,52 @@ class BulletTalos:
             ]
         )
         rotation = R.from_quat(q[3:7])
-        q[:3] -= rotation.as_matrix() @ self.localInertiaPos 
+        q[:3] -= rotation.as_matrix() @ self.localInertiaPos
         return q, v
+    
+    def addTable(self, path, position):
+        p.setAdditionalSearchPath(path)
+        self.tableId = p.loadURDF("table/table.urdf")
+        p.resetBasePositionAndOrientation(self.tableId, posObj=position,ornObj=[0,0,0,1])
+
+    def showSlope(self, position, orientation):
+        visualShapeTarget = p.createVisualShape(
+            shapeType=p.GEOM_BOX,
+            halfExtents=[2, 0.3, 0.01],
+            rgbaColor=[0.0, 1.0, 0.0, 1.0],
+            specularColor=[0.4, 0.4, 0],
+            visualFramePosition=[0.0, 0.0, 0.0],
+        )
+
+        self.sphereIdRight = p.createMultiBody(
+            baseMass=0.0,
+            baseInertialFramePosition=[0, 0, 0],
+            baseVisualShapeIndex=visualShapeTarget,
+            basePosition=position,
+            baseOrientation=orientation,
+            useMaximalCoordinates=True,
+        )
+        
+    def showHandToTrack(self, RH_pose):
+        visualShapeTarget = p.createVisualShape(
+            shapeType=p.GEOM_BOX,
+            halfExtents=[0.05, 0.05, 0.05],
+            rgbaColor=[0.0, 0.0, 1.0, 1.0],
+            specularColor=[0.4, 0.4, 0],
+            visualFramePosition=[0.0, 0.0, 0.0],
+        )
+
+        self.sphereIdHand = p.createMultiBody(
+            baseMass=0.0,
+            baseInertialFramePosition=[0, 0, 0],
+            baseVisualShapeIndex=visualShapeTarget,
+            basePosition=[
+                RH_pose[0],
+                RH_pose[1],
+                RH_pose[2],
+            ],
+            useMaximalCoordinates=True,
+        )
 
     def showTargetToTrack(self, LF_pose, RF_pose):
         visualShapeTarget = p.createVisualShape(
@@ -159,27 +229,32 @@ class BulletTalos:
             useMaximalCoordinates=True,
         )
 
-        self.visualShapeTargetCom = p.createVisualShape(
-            shapeType=p.GEOM_BOX,
-            halfExtents=[0.05, 0.05, 0.05],
-            rgbaColor=[0.0, 1.0, 0.0, 1.0],
-            specularColor=[0.4, 0.4, 0],
-            visualFramePosition=[0.0, 0.0, 0.0],
-        )
-
     def moveMarkers(self, LF_pose, RF_pose):
 
         p.resetBasePositionAndOrientation(
             self.sphereIdRight,
-            posObj=[RF_pose.translation[0], RF_pose.translation[1], 0],
+            posObj=[
+                RF_pose.translation[0],
+                RF_pose.translation[1],
+                RF_pose.translation[2],
+            ],
             ornObj=np.array([0.0, 0.0, 0.0, 1.0]),
         )
         p.resetBasePositionAndOrientation(
             self.sphereIdLeft,
-            posObj=[LF_pose.translation[0], LF_pose.translation[1], 0],
+            posObj=[
+                LF_pose.translation[0],
+                LF_pose.translation[1],
+                LF_pose.translation[2],
+            ],
             ornObj=np.array([0.0, 0.0, 0.0, 1.0]),
         )
-
+    
+    def visualizeTrajectory(self, qs, dt=0.1):
+        for q in qs:
+            resetState(q)
+            time.sleep(dt)
+    
     def close(self):
         p.disconnect()
 
